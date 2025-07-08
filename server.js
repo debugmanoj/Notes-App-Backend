@@ -16,10 +16,10 @@ app.use("/api/auth", authRoutes);
 app.use("/api/notes", noteRoutes);
 
 // MongoDB connection
-const mongoURI = process.env.MONGO_URI || `${process.env.DB_URL}/${process.env.DB_NAME}?retryWrites=true&w=majority`;
+const MONGODB_URI = `${process.env.DB_URL}/${process.env.DB_NAME}`;
 
 mongoose
-  .connect(mongoURI, {
+  .connect(MONGODB_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
