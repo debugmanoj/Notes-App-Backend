@@ -21,41 +21,21 @@ app.use("/api/notes", noteRoutes);
 // MongoDB Connection
 const MONGODB_URI = process.env.MONGO_URI;
 
-if (!MONGODB_URI) {
-  throw new Error("❌ Please define MONGO_URI in your environment variables.");
-}
-
-let cached = global.mongoose;
-
-if (!cached) {
-  cached = global.mongoose = { conn: null, promise: null };
-}
-
+// Safe connect function
 async function connectDB() {
-  if (cached.conn) return cached.conn;
-
-  if (!cached.promise) {
-    cached.promise = mongoose.connect(MONGODB_URI, {
-      bufferCommands: false,
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log("✅ MongoDB connected");
+    const port = process.env.PORT || 5000;
+    app.listen(port, () => {
+      console.log(`🚀 Server running on port ${port}`);
     });
+  } catch (err) {
+    console.error("❌ Failed to connect to MongoDB:", err);
+    process.exit(1);
   }
-
-  cached.conn = await cached.promise;
-  return cached.conn;
 }
 
-// Start server after DB connects
-connectDB()
-  .then(() => {
-    console.log("✅ MongoDB connected");
-    app.listen(process.env.PORT, () => {
-      console.log(`🚀 Server running on port ${process.env.PORT}`);
-    });
-  })
-  .catch((err) => {
-    console.error("❌ Failed to connect to MongoDB:", err);
-  });
+connectDB();
 
 export default app;
