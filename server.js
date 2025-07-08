@@ -10,26 +10,52 @@ dotenv.config();
 
 const app = express();
 app.use(express.json());
-app.use(cors({ origin: process.env.CLIENT_URL }));
+app.use(cors({
+  origin: '*',  // Allows all origins
+  methods: 'GET,POST,PUT,DELETE',
+  allowedHeaders: 'Content-Type,Authorization',
+}));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/notes", noteRoutes);
+// MongoDB Connection
+const MONGODB_URI = process.env.MONGO_URI;
 
-// MongoDB connection
-const MONGODB_URI = `${process.env.DB_URL}/${process.env.DB_NAME}`;
-
-mongoose
-  .connect(MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-  .then(() => console.log(" MongoDB Connected"))
-  .catch((err) => console.error(" MongoDB connection error:", err));
-
-// For Vercel (must export handler)
-const port = process.env.PORT || 5000;
-if (process.env.NODE_ENV !== "production") {
-  app.listen(port, () => console.log(` Server running on port ${port}`));
+if (!MONGODB_URI) {
+  throw new Error("❌ Please define MONGO_URI in your environment variables.");
 }
+
+let cached = global.mongoose;
+
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
+}
+
+async function connectDB() {
+  if (cached.conn) return cached.conn;
+
+  if (!cached.promise) {
+    cached.promise = mongoose.connect(MONGODB_URI, {
+      bufferCommands: false,
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+  }
+
+  cached.conn = await cached.promise;
+  return cached.conn;
+}
+
+// Start server after DB connects
+connectDB()
+  .then(() => {
+    console.log("✅ MongoDB connected");
+    app.listen(process.env.PORT, () => {
+      console.log(`🚀 Server running on port ${process.env.PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error("❌ Failed to connect to MongoDB:", err);
+  });
 
 export default app;
